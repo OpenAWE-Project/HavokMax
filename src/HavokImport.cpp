@@ -27,41 +27,41 @@ static const TCHAR _className[] = _T("HavokImport");
 
 class HavokImport : public SceneImport, HavokMaxV2 {
 public:
-  // Constructor/Destructor
-  HavokImport();
+	// Constructor/Destructor
+	HavokImport();
 
-  int ExtCount() override;                  // Number of extensions supported
-  const TCHAR *Ext(int n) override;         // Extension #n
-  const TCHAR *LongDesc() override;         // Long ASCII description
-  const TCHAR *ShortDesc() override;        // Short ASCII description
-  const TCHAR *AuthorName() override;       // ASCII Author name
-  const TCHAR *CopyrightMessage() override; // ASCII Copyright message
-  const TCHAR *OtherMessage1() override;    // Other message #1
-  const TCHAR *OtherMessage2() override;    // Other message #2
-  unsigned int Version() override;    // Version number * 100 (i.e. v3.01 = 301)
-  void ShowAbout(HWND hWnd) override; // Show DLL's "About..." box
-  int DoImport(const TCHAR *name, ImpInterface *i, Interface *gi,
-               BOOL suppressPrompts = FALSE) override;
+	int ExtCount() override;                  // Number of extensions supported
+	const TCHAR *Ext(int n) override;         // Extension #n
+	const TCHAR *LongDesc() override;         // Long ASCII description
+	const TCHAR *ShortDesc() override;        // Short ASCII description
+	const TCHAR *AuthorName() override;       // ASCII Author name
+	const TCHAR *CopyrightMessage() override; // ASCII Copyright message
+	const TCHAR *OtherMessage1() override;    // Other message #1
+	const TCHAR *OtherMessage2() override;    // Other message #2
+	unsigned int Version() override;    // Version number * 100 (i.e. v3.01 = 301)
+	void ShowAbout(HWND hWnd) override; // Show DLL's "About..." box
+	int DoImport(const TCHAR *name, ImpInterface *i, Interface *gi,
+				 BOOL suppressPrompts = FALSE) override;
 
-  void DoImport(const std::string &fileName, bool suppressPrompts);
+	void DoImport(const std::string &fileName, bool suppressPrompts);
 
-  void LoadSkeleton(const hkaSkeleton *skel);
-  void LoadAnimation(const hkaAnimation *ani, const hkaAnimationBinding *bind);
-  void LoadRootMotion(const hkaAnimatedReferenceFrame *ani,
-                      const std::vector<float> &times);
+	void LoadSkeleton(const hkaSkeleton *skel);
+	void LoadAnimation(const hkaAnimation *ani, const hkaAnimationBinding *bind);
+	void LoadRootMotion(const hkaAnimatedReferenceFrame *ani,
+						const std::vector<float> &times);
 };
 
 class : public ClassDesc2 {
 public:
-  int IsPublic() { return TRUE; }
-  void *Create(BOOL) { return new HavokImport(); }
-  const TCHAR *ClassName() { return _className; }
-  SClass_ID SuperClassID() { return SCENE_IMPORT_CLASS_ID; }
-  Class_ID ClassID() { return HavokImport_CLASS_ID; }
-  const TCHAR *Category() { return NULL; }
-  const TCHAR *InternalName() { return _className; }
-  HINSTANCE HInstance() { return hInstance; }
-  const TCHAR *NonLocalizedClassName() { return _className; }
+	int IsPublic() { return TRUE; }
+	void *Create(BOOL) { return new HavokImport(); }
+	const TCHAR *ClassName() { return _className; }
+	SClass_ID SuperClassID() { return SCENE_IMPORT_CLASS_ID; }
+	Class_ID ClassID() { return HavokImport_CLASS_ID; }
+	const TCHAR *Category() { return NULL; }
+	const TCHAR *InternalName() { return _className; }
+	HINSTANCE HInstance() { return hInstance; }
+	const TCHAR *NonLocalizedClassName() { return _className; }
 } HavokImportDesc;
 
 ClassDesc2 *GetHavokImportDesc() { return &HavokImportDesc; }
@@ -72,7 +72,7 @@ HavokImport::HavokImport() {}
 int HavokImport::ExtCount() { return static_cast<int>(extensions.size()); }
 
 const TCHAR *HavokImport::Ext(int n) {
-  return std::next(extensions.begin(), n)->data();
+	return std::next(extensions.begin(), n)->data();
 }
 
 const TCHAR *HavokImport::LongDesc() { return _T("Havok Import"); }
@@ -82,7 +82,7 @@ const TCHAR *HavokImport::ShortDesc() { return _T("Havok Import"); }
 const TCHAR *HavokImport::AuthorName() { return _T("Lukas Cone"); }
 
 const TCHAR *HavokImport::CopyrightMessage() {
-  return _T(HavokMax_COPYRIGHT "Lukas Cone");
+	return _T(HavokMax_COPYRIGHT "Lukas Cone");
 }
 
 const TCHAR *HavokImport::OtherMessage1() { return _T(""); }
@@ -97,410 +97,405 @@ static const MSTR skelNameHint = _T("hkaSkeleton");
 static const MSTR boneNameHint = _T("hkaBone");
 
 void HavokImport::LoadSkeleton(const hkaSkeleton *skel) {
-  std::vector<INode *> nodes;
-  int currentBone = 0;
+	std::vector<INode *> nodes;
+	int currentBone = 0;
 
-  for (auto b : *skel->Bones()) {
-    TSTRING boneName = ToTSTRING(b->Name());
-    INode *node = GetCOREInterface()->GetINodeByName(boneName.c_str());
+	for (auto b : *skel->Bones()) {
+		TSTRING boneName = ToTSTRING(b->Name());
+		INode *node = GetCOREInterface()->GetINodeByName(boneName.c_str());
 
-    if (!node) {
-      Object *obj = static_cast<Object *>(
-          CreateInstance(HELPER_CLASS_ID, Class_ID(DUMMY_CLASS_ID, 0)));
-      node = GetCOREInterface()->CreateObjectNode(obj);
-      node->ShowBone(2);
-      node->SetWireColor(0x80ff);
-    }
+		if (!node) {
+			Object *obj = static_cast<Object *>(
+			CreateInstance(HELPER_CLASS_ID, Class_ID(DUMMY_CLASS_ID, 0)));
+			node = GetCOREInterface()->CreateObjectNode(obj);
+			node->ShowBone(2);
+			node->SetWireColor(0x80ff);
+		}
 
-    Matrix3 nodeTM = {};
-    uni::RTSValue bneTM;
-    b->GetTM(bneTM);
-    nodeTM.SetRotate(
-        reinterpret_cast<const Quat &>(bneTM.rotation.QConjugate()));
-    nodeTM.SetTrans(
-        reinterpret_cast<const Point3 &>(bneTM.translation * objectScale));
-    const auto parentNode = b->Parent();
-    if (parentNode) {
-      const auto bIndex = parentNode->Index();
-      nodes[bIndex]->AttachChild(node);
-      nodeTM *= nodes[bIndex]->GetNodeTM(0);
-    } else
-      nodeTM *= corMat;
+		Matrix3 nodeTM = {};
+		uni::RTSValue bneTM;
+		b->GetTM(bneTM);
+		nodeTM.SetRotate(
+		reinterpret_cast<const Quat &>(bneTM.rotation.QConjugate()));
+		nodeTM.SetTrans(
+		reinterpret_cast<const Point3 &>(bneTM.translation * objectScale));
+		const auto parentNode = b->Parent();
+		if (parentNode) {
+			const auto bIndex = parentNode->Index();
+			nodes[bIndex]->AttachChild(node);
+			nodeTM *= nodes[bIndex]->GetNodeTM(0);
+		} else
+			nodeTM *= corMat;
 
-    node->SetNodeTM(0, nodeTM);
+		node->SetNodeTM(0, nodeTM);
 
-    node->SetName(ToBoneName(boneName));
-    nodes.push_back(node);
-    node->SetUserPropString(skelNameHint, ToTSTRING(skel->Name()).data());
-    node->SetUserPropString(boneNameHint, ToTSTRING(currentBone).c_str());
+		node->SetName(ToBoneName(boneName));
+		nodes.push_back(node);
+		node->SetUserPropString(skelNameHint, ToTSTRING(skel->Name()).data());
+		node->SetUserPropString(boneNameHint, ToTSTRING(currentBone).c_str());
 
-    currentBone++;
-  }
+		currentBone++;
+	}
 }
 
 static class : public ITreeEnumProc {
-  const MSTR skelNameHint = _T("hkaSkeleton");
-  const MSTR boneNameHint = _T("hkaBone");
-  const MSTR skelNameExclude = _T("ragdoll");
+	const MSTR skelNameHint = _T("hkaSkeleton");
+	const MSTR boneNameHint = _T("hkaBone");
+	const MSTR skelNameExclude = _T("ragdoll");
 
 public:
-  std::vector<INode *> bones;
+	std::vector<INode *> bones;
 
-  void RescanBones() {
-    bones.clear();
-    GetCOREInterface7()->GetScene()->EnumTree(this);
-  }
+	void RescanBones() {
+		bones.clear();
+		GetCOREInterface7()->GetScene()->EnumTree(this);
+	}
 
-  INode *LookupNode(int ID) {
-    for (auto &b : bones)
-      if (b->UserPropExists(boneNameHint)) {
-        int _ID;
-        b->GetUserPropInt(boneNameHint, _ID);
+	INode *LookupNode(int ID) {
+		for (auto &b : bones)
+			if (b->UserPropExists(boneNameHint)) {
+				int _ID;
+				b->GetUserPropInt(boneNameHint, _ID);
 
-        if (_ID == ID)
-          return b;
-      }
+				if (_ID == ID)
+					return b;
+			}
 
-    return nullptr;
-  }
+		return nullptr;
+	}
 
-  int callback(INode *node) override {
-    Object *refobj = node->EvalWorldState(0).obj;
+	int callback(INode *node) override {
+		Object *refobj = node->EvalWorldState(0).obj;
 
-    if (node->UserPropExists(skelNameHint)) {
-      MSTR skelName;
-      node->GetUserPropString(skelNameHint, skelName);
-      skelName.toLower();
+		if (node->UserPropExists(skelNameHint)) {
+			MSTR skelName;
+			node->GetUserPropString(skelNameHint, skelName);
+			skelName.toLower();
 
-      const int skelNameExcludeSize = skelNameExclude.Length();
-      bool found = true;
+			const int skelNameExcludeSize = skelNameExclude.Length();
+			bool found = true;
 
-      for (int s = 0; s < skelNameExcludeSize; s++)
-        if (skelName[s] != skelNameExclude[s]) {
-          found = false;
-          break;
-        }
+			for (int s = 0; s < skelNameExcludeSize; s++)
+				if (skelName[s] != skelNameExclude[s]) {
+					found = false;
+					break;
+				}
 
-      if (found)
-        return TREE_CONTINUE;
+			if (found)
+				return TREE_CONTINUE;
 
-      bones.push_back(node);
-    }
+			bones.push_back(node);
+		}
 
-    return TREE_CONTINUE;
-  }
+		return TREE_CONTINUE;
+	}
 } iBoneScanner;
 
 void HavokImport::LoadRootMotion(const hkaAnimatedReferenceFrame *ani,
-                                 const std::vector<float> &times) {
-  if (!ani) {
-    return;
-  }
+								 const std::vector<float> &times) {
+	if (!ani) {
+		return;
+	}
 
-  std::vector<INode *> rootNodes;
-  std::copy_if(iBoneScanner.bones.begin(), iBoneScanner.bones.end(),
-               std::back_inserter(rootNodes), [](INode *item) {
-                 auto pNode = item->GetParentNode();
+	std::vector<INode *> rootNodes;
+	std::copy_if(iBoneScanner.bones.begin(), iBoneScanner.bones.end(),
+				 std::back_inserter(rootNodes), [](INode *item) {
+		auto pNode = item->GetParentNode();
 
-                 if (!pNode || pNode->IsRootNode()) {
-                   return true;
-                 }
+		if (!pNode || pNode->IsRootNode()) {
+			return true;
+		}
 
-                 return false;
-               });
+		return false;
+	});
 
-  for (auto r : rootNodes) {
-    std::vector<Matrix3> cMats;
-    cMats.reserve(times.size());
+	for (auto r : rootNodes) {
+		std::vector<Matrix3> cMats;
+		cMats.reserve(times.size());
 
-    for (auto t : times) {
-      cMats.emplace_back(r->GetNodeTM(SecToTicks(t)));
-    }
+		for (auto t : times) {
+			cMats.emplace_back(r->GetNodeTM(SecToTicks(t)));
+		}
 
-    size_t cTime = 0;
-    Control *cnt = r->GetTMController();
-    AnimateOn();
+		size_t cTime = 0;
+		Control *cnt = r->GetTMController();
+		AnimateOn();
 
-    for (auto t : times) {
-      hkQTransform trans;
-      ani->GetValue(trans, t);
+		for (auto t : times) {
+			hkQTransform trans;
+			ani->GetValue(trans, t);
 
-      Matrix3 cMat(true);
-      Quat &cRotation = reinterpret_cast<Quat &>(trans.rotation.QConjugate());
-      auto cTrans = reinterpret_cast<Point3 &>(trans.translation * objectScale);
-      cMat.SetRotate(cRotation);
-      cMat.SetTrans(cTrans);
-      auto trueTM = cMats[cTime++] * Inverse(corMat);
+			Matrix3 cMat(true);
+			Quat &cRotation = reinterpret_cast<Quat &>(trans.rotation.QConjugate());
+			auto cTrans = reinterpret_cast<Point3 &>(trans.translation * objectScale);
+			cMat.SetRotate(cRotation);
+			cMat.SetTrans(cTrans);
+			auto trueTM = cMats[cTime++] * Inverse(corMat);
 
-      SetXFormPacket packet(trueTM * cMat * corMat);
+			SetXFormPacket packet(trueTM * cMat * corMat);
 
-      cnt->SetValue(SecToTicks(t), &packet);
-    }
+			cnt->SetValue(SecToTicks(t), &packet);
+		}
 
-    AnimateOff();
-  }
+		AnimateOff();
+	}
 }
 
 void HavokImport::LoadAnimation(const hkaAnimation *ani,
-                                const hkaAnimationBinding *bind) {
-  if (!ani) {
-    printerror("[Havok] Unregistered animation format.");
-    return;
-  }
+								const hkaAnimationBinding *bind) {
+	if (!ani) {
+		printerror("[Havok] Unregistered animation format.");
+		return;
+	}
 
-  /*if (!ani->IsDecoderSupported()) {
-    printerror("[Havok] Usupported animation type: ",
-               << ani->GetAnimationTypeName());
-    return;
-  }*/
+	/*if (!ani->IsDecoderSupported()) {
+	  printerror("[Havok] Usupported animation type: ",
+				 << ani->GetAnimationTypeName());
+	  return;
+	}*/
 
-  iBoneScanner.RescanBones();
+	iBoneScanner.RescanBones();
 
-  TimeValue numTicks = SecToTicks(ani->Duration());
-  TimeValue ticksPerFrame = GetTicksPerFrame();
-  TimeValue overlappingTicks = numTicks % ticksPerFrame;
+	TimeValue numTicks = SecToTicks(ani->Duration());
+	TimeValue ticksPerFrame = GetTicksPerFrame();
+	TimeValue overlappingTicks = numTicks % ticksPerFrame;
 
-  if (overlappingTicks > (ticksPerFrame / 2)) {
-    numTicks += ticksPerFrame - overlappingTicks;
-  } else {
-    numTicks -= overlappingTicks;
-  }
-  Interval aniRange(0, numTicks);
-  GetCOREInterface()->SetAnimRange(aniRange);
+	if (overlappingTicks > (ticksPerFrame / 2)) {
+		numTicks += ticksPerFrame - overlappingTicks;
+	} else {
+		numTicks -= overlappingTicks;
+	}
+	Interval aniRange(0, numTicks);
+	GetCOREInterface()->SetAnimRange(aniRange);
 
-  std::vector<float> frameTimes;
+	std::vector<float> frameTimes;
 
-  for (TimeValue v = 0; v <= aniRange.End(); v += GetTicksPerFrame()) {
-    frameTimes.push_back(TicksToSec(v));
-  }
+	for (TimeValue v = 0; v <= aniRange.End(); v += GetTicksPerFrame()) {
+		frameTimes.push_back(TicksToSec(v));
+	}
 
-  const auto numBones = ani->GetNumOfTransformTracks();
-  BlendHint blendType = bind ? bind->GetBlendHint() : BlendHint::NORMAL;
+	const auto numBones = ani->GetNumOfTransformTracks();
+	BlendHint blendType = bind ? bind->GetBlendHint() : BlendHint::NORMAL;
 
-  if (additiveOverride) {
-    blendType = static_cast<BlendHint>(additiveOverride);
-  }
+	if (additiveOverride) {
+		blendType = static_cast<BlendHint>(additiveOverride);
+	}
 
-  std::vector<Matrix3> addTMs(numBones, true);
+	std::vector<Matrix3> addTMs(numBones, true);
 
-  if (blendType != BlendHint::NORMAL) {
-    for (int curBone = 0; curBone < numBones; curBone++) {
-      INode *node = nullptr;
-      TSTRING boneName;
+	if (blendType != BlendHint::NORMAL) {
+		for (int curBone = 0; curBone < numBones; curBone++) {
+			INode *node = nullptr;
+			TSTRING boneName;
 
-      if (ani->GetNumAnnotations()) {
-        hkaAnnotationTrackPtr annot = ani->GetAnnotation(curBone);
-        boneName = ToTSTRING(annot.get()->GetName());
-        node = GetCOREInterface()->GetINodeByName(boneName.c_str());
-      }
+			if (ani->GetNumAnnotations()) {
+				hkaAnnotationTrackPtr annot = ani->GetAnnotation(curBone);
+				boneName = ToTSTRING(annot.get()->GetName());
+				node = GetCOREInterface()->GetINodeByName(boneName.c_str());
+			}
 
-      if (!node && bind) {
-        node = iBoneScanner.LookupNode(
-            bind->GetTransformTrackToBoneIndex(curBone));
-      }
+			if (!node && bind) {
+				node = iBoneScanner.LookupNode(
+				bind->GetTransformTrackToBoneIndex(curBone));
+			}
 
-      if (!node) {
-        continue;
-      }
+			if (!node) {
+				continue;
+			}
 
-      Matrix3 inPacket = node->GetNodeTM(0);
+			Matrix3 inPacket = node->GetNodeTM(0);
 
-      if (!node->GetParentNode()->IsRootNode()) {
-        Matrix3 parentTM = node->GetParentTM(0);
-        parentTM.Invert();
-        inPacket *= parentTM;
-      }
+			if (!node->GetParentNode()->IsRootNode()) {
+				Matrix3 parentTM = node->GetParentTM(0);
+				parentTM.Invert();
+				inPacket *= parentTM;
+			}
 
-      addTMs[curBone] = inPacket;
-    }
-  }
+			addTMs[curBone] = inPacket;
+		}
+	}
 
-  const auto tracks = ani->Tracks();
+	const auto tracks = ani->Tracks();
 
-  for (int curBone = 0; curBone < numBones; curBone++) {
-    INode *node = nullptr;
-    es::string_view bneNameRaw;
+	for (int curBone = 0; curBone < numBones; curBone++) {
+		INode *node = nullptr;
+		es::string_view bneNameRaw;
 
-    if (ani->GetNumAnnotations()) {
-      hkaAnnotationTrackPtr annot = ani->GetAnnotation(curBone);
-      bneNameRaw = annot.get()->GetName();
-      TSTRING boneName = ToTSTRING(bneNameRaw);
-      node = GetCOREInterface()->GetINodeByName(boneName.c_str());
-    }
+		if (ani->GetNumAnnotations()) {
+			hkaAnnotationTrackPtr annot = ani->GetAnnotation(curBone);
+			bneNameRaw = annot.get()->GetName();
+			TSTRING boneName = ToTSTRING(bneNameRaw);
+			node = GetCOREInterface()->GetINodeByName(boneName.c_str());
+		}
 
-    if (!node) {
-      if (bind && bind->GetNumTransformTrackToBoneIndices()) {
-        node = iBoneScanner.LookupNode(
-            bind->GetTransformTrackToBoneIndex(curBone));
-      } else {
-        node = iBoneScanner.LookupNode(curBone);
-      }
-    }
+		if (!node) {
+			if (bind && bind->GetNumTransformTrackToBoneIndices()) {
+				node = iBoneScanner.LookupNode(
+				bind->GetTransformTrackToBoneIndex(curBone));
+			} else {
+				node = iBoneScanner.LookupNode(curBone);
+			}
+		}
 
-    if (!node) {
-      if (bneNameRaw.length()) {
-        printwarning("[Havok] Couldn't find bone: " << bneNameRaw);
-      } else if (bind && bind->GetNumTransformTrackToBoneIndices()) {
-        printwarning("[Havok] Couldn't find hkaBone: "
-                     << bind->GetTransformTrackToBoneIndex(curBone));
-      } else {
-        printwarning("[Havok] Couldn't find hkaBone: " << curBone);
-      }
+		if (!node) {
+			if (bneNameRaw.length()) {
+				printwarning("[Havok] Couldn't find bone: " << bneNameRaw);
+			} else if (bind && bind->GetNumTransformTrackToBoneIndices()) {
+				printwarning("[Havok] Couldn't find hkaBone: "
+							 << bind->GetTransformTrackToBoneIndex(curBone));
+			} else {
+				printwarning("[Havok] Couldn't find hkaBone: " << curBone);
+			}
 
-      continue;
-    }
+			continue;
+		}
 
-    Control *cnt = node->GetTMController();
+		Control *cnt = node->GetTMController();
 
-    if (cnt->GetPositionController()->ClassID() !=
-        Class_ID(LININTERP_POSITION_CLASS_ID, 0)) {
-      cnt->SetPositionController((Control *)CreateInstance(
-          CTRL_POSITION_CLASS_ID, Class_ID(LININTERP_POSITION_CLASS_ID, 0)));
-    }
+		if (cnt->GetPositionController()->ClassID() !=
+			Class_ID(LININTERP_POSITION_CLASS_ID, 0)) {
+			cnt->SetPositionController((Control *)CreateInstance(
+			CTRL_POSITION_CLASS_ID, Class_ID(LININTERP_POSITION_CLASS_ID, 0)));
+		}
 
-    if (cnt->GetRotationController()->ClassID() !=
-        Class_ID(HYBRIDINTERP_ROTATION_CLASS_ID, 0)) {
-      cnt->SetRotationController((Control *)CreateInstance(
-          CTRL_ROTATION_CLASS_ID, Class_ID(HYBRIDINTERP_ROTATION_CLASS_ID, 0)));
-    }
+		if (cnt->GetRotationController()->ClassID() !=
+			Class_ID(HYBRIDINTERP_ROTATION_CLASS_ID, 0)) {
+			cnt->SetRotationController((Control *)CreateInstance(
+			CTRL_ROTATION_CLASS_ID, Class_ID(HYBRIDINTERP_ROTATION_CLASS_ID, 0)));
+		}
 
-    if (cnt->GetScaleController()->ClassID() !=
-        Class_ID(LININTERP_SCALE_CLASS_ID, 0)) {
-      cnt->SetScaleController((Control *)CreateInstance(
-          CTRL_SCALE_CLASS_ID, Class_ID(LININTERP_SCALE_CLASS_ID, 0)));
-    }
+		if (cnt->GetScaleController()->ClassID() !=
+			Class_ID(LININTERP_SCALE_CLASS_ID, 0)) {
+			cnt->SetScaleController((Control *)CreateInstance(
+			CTRL_SCALE_CLASS_ID, Class_ID(LININTERP_SCALE_CLASS_ID, 0)));
+		}
 
-    SuspendAnimate();
-    AnimateOn();
+		SuspendAnimate();
+		AnimateOn();
 
-    const auto track = tracks->At(curBone);
+		const auto track = tracks->At(curBone);
 
-    for (auto &t : frameTimes) {
-      hkQTransform trans;
-      track->GetValue(trans, t);
+		for (auto &t : frameTimes) {
+			hkQTransform trans;
+			track->GetValue(trans, t);
 
-      Matrix3 cMat;
-      Quat &cRotation = reinterpret_cast<Quat &>(trans.rotation.QConjugate());
-      auto cTrans = reinterpret_cast<Point3 &>(trans.translation * objectScale);
+			Matrix3 cMat;
+			Quat &cRotation = reinterpret_cast<Quat &>(trans.rotation.QConjugate());
+			auto cTrans = reinterpret_cast<Point3 &>(trans.translation * objectScale);
 
-      if (blendType == BlendHint::ADDITIVE_DEPRECATED) {
-        cMat.SetRotate(Quat(addTMs[curBone]) + cRotation);
-        cMat.SetTrans(cTrans + addTMs[curBone].GetTrans());
-      } else if (blendType == BlendHint::ADDITIVE) {
-        cMat.SetRotate(cRotation + Quat(addTMs[curBone]));
-        cMat.SetTrans(cTrans + addTMs[curBone].GetTrans());
-      } else {
-        cMat.SetRotate(cRotation);
-        cMat.SetTrans(cTrans);
-      }
+			if (blendType == BlendHint::ADDITIVE_DEPRECATED) {
+				cMat.SetRotate(Quat(addTMs[curBone]) + cRotation);
+				cMat.SetTrans(cTrans + addTMs[curBone].GetTrans());
+			} else if (blendType == BlendHint::ADDITIVE) {
+				cMat.SetRotate(cRotation + Quat(addTMs[curBone]));
+				cMat.SetTrans(cTrans + addTMs[curBone].GetTrans());
+			} else {
+				cMat.SetRotate(cRotation);
+				cMat.SetTrans(cTrans);
+			}
 
-      if (!checked[Checked::CH_DISABLE_SCALE]) {
-        cMat.Scale(reinterpret_cast<Point3 &>(trans.scale));
-      }
+			if (!checked[Checked::CH_DISABLE_SCALE]) {
+				cMat.Scale(reinterpret_cast<Point3 &>(trans.scale));
+			}
 
-      if (node->GetParentNode()->IsRootNode()) {
-        cMat *= corMat;
-      } else if (!checked[Checked::CH_DISABLE_SCALE]) {
-        Matrix3 pAbsMat = node->GetParentTM(SecToTicks(t));
-        Point3 nScale = {pAbsMat.GetRow(0).Length(), pAbsMat.GetRow(1).Length(),
-                         pAbsMat.GetRow(2).Length()};
+			if (node->GetParentNode()->IsRootNode()) {
+				cMat *= corMat;
+			} else if (!checked[Checked::CH_DISABLE_SCALE]) {
+				Matrix3 pAbsMat = node->GetParentTM(SecToTicks(t));
+				Point3 nScale = {pAbsMat.GetRow(0).Length(), pAbsMat.GetRow(1).Length(),
+								 pAbsMat.GetRow(2).Length()};
 
-        for (int s = 0; s < 3; s++) {
-          if (!nScale[s]) {
-            nScale[s] = FLT_EPSILON;
-          }
-        }
-        Point3 fracPos = cMat.GetTrans() / nScale;
-        nScale = 1.f - nScale;
-        cMat.Translate(fracPos * nScale);
-      }
+				for (int s = 0; s < 3; s++) {
+					if (!nScale[s]) {
+						nScale[s] = FLT_EPSILON;
+					}
+				}
+				Point3 fracPos = cMat.GetTrans() / nScale;
+				nScale = 1.f - nScale;
+				cMat.Translate(fracPos * nScale);
+			}
 
-      SetXFormPacket packet(cMat);
+			SetXFormPacket packet(cMat);
 
-      cnt->SetValue(SecToTicks(t), &packet);
-    }
+			cnt->SetValue(SecToTicks(t), &packet);
+		}
 
-    AnimateOff();
+		AnimateOff();
 
-    Control *rotControl = (Control *)CreateInstance(
-        CTRL_ROTATION_CLASS_ID, Class_ID(LININTERP_ROTATION_CLASS_ID, 0));
-    rotControl->Copy(cnt->GetRotationController());
-    cnt->GetRotationController()->Copy(rotControl);
-  }
+		Control *rotControl = (Control *)CreateInstance(
+		CTRL_ROTATION_CLASS_ID, Class_ID(LININTERP_ROTATION_CLASS_ID, 0));
+		rotControl->Copy(cnt->GetRotationController());
+		cnt->GetRotationController()->Copy(rotControl);
+	}
 
-  LoadRootMotion(ani->GetExtractedMotion(), frameTimes);
+	LoadRootMotion(ani->GetExtractedMotion(), frameTimes);
 }
 
 void HavokImport::DoImport(const std::string &fileName, bool suppressPrompts) {
-  auto pFile = IhkPackFile::Create(std::to_string(fileName));
-  const hkRootLevelContainer *rootCont = pFile->GetRootLevelContainer();
+	auto pFile = IhkPackFile::Create(std::to_string(fileName));
 
-  for (auto &v : *rootCont) {
-    if (v == hkaAnimationContainer::GetHash()) {
-      const hkaAnimationContainer *aniCont = v;
+	const hkaAnimationContainer *aniCont = dynamic_cast<hkaAnimationContainer*>(pFile->GetClasses(hkaAnimationContainer::GetHash())[0]);
 
-      numAnimations = aniCont->GetNumAnimations();
+	numAnimations = aniCont->GetNumAnimations();
 
-      if (!suppressPrompts) {
-        if (!SpawnImportDialog()) {
-          return;
-        }
-      }
+	if (!suppressPrompts) {
+		if (!SpawnImportDialog()) {
+			return;
+		}
+	}
 
-      for (auto s : aniCont->Skeletons()) {
-        LoadSkeleton(s);
-      }
+	for (auto s : aniCont->Skeletons()) {
+		LoadSkeleton(s);
+	}
 
-      if (numAnimations) {
-        LoadAnimation(aniCont->GetAnimation(motionIndex),
-                      aniCont->GetNumBindings()
-                          ? aniCont->GetBinding(motionIndex)
-                          : nullptr);
-      }
-    }
-  }
+	if (numAnimations) {
+		LoadAnimation(aniCont->GetAnimation(motionIndex),
+					  aniCont->GetNumBindings()
+					  ? aniCont->GetBinding(motionIndex)
+					  : nullptr);
+	}
 }
 
 void SwapLocale() {
-  static std::string oldLocale;
+	static std::string oldLocale;
 
-  if (!oldLocale.empty()) {
-    setlocale(LC_NUMERIC, oldLocale.data());
-    oldLocale.clear();
-  } else {
-    oldLocale = setlocale(LC_NUMERIC, nullptr);
-    setlocale(LC_NUMERIC, "en-US");
-  }
+	if (!oldLocale.empty()) {
+		setlocale(LC_NUMERIC, oldLocale.data());
+		oldLocale.clear();
+	} else {
+		oldLocale = setlocale(LC_NUMERIC, nullptr);
+		setlocale(LC_NUMERIC, "en-US");
+	}
 }
 
 int HavokImport::DoImport(const TCHAR *fileName, ImpInterface * /*importerInt*/,
-                          Interface * /*ip*/, BOOL suppressPrompts) {
-  SwapLocale();
-  TSTRING filename_ = fileName;
+						  Interface * /*ip*/, BOOL suppressPrompts) {
+	SwapLocale();
+	TSTRING filename_ = fileName;
 
-  try {
-    DoImport(std::to_string(filename_), suppressPrompts);
-  } catch (const es::InvalidHeaderError &) {
-    SwapLocale();
-    return FALSE;
-  } catch (const std::exception &e) {
-    if (suppressPrompts) {
-      printerror(e.what());
-    } else {
-      auto msg = ToTSTRING(e.what());
-      MessageBox(GetActiveWindow(), msg.data(), _T("Exception thrown!"),
-                 MB_ICONERROR | MB_OK);
-    }
-  } catch (...) {
-    if (suppressPrompts) {
-      printerror("Unhandled exception has been thrown!");
-    } else {
-      MessageBox(GetActiveWindow(), _T("Unhandled exception has been thrown!"),
-                 _T("Exception thrown!"), MB_ICONERROR | MB_OK);
-    }
-  }
+	try {
+		DoImport(std::to_string(filename_), suppressPrompts);
+	} catch (const es::InvalidHeaderError &) {
+		SwapLocale();
+		return FALSE;
+	} catch (const std::exception &e) {
+		if (suppressPrompts) {
+			printerror(e.what());
+		} else {
+			auto msg = ToTSTRING(e.what());
+			MessageBox(GetActiveWindow(), msg.data(), _T("Exception thrown!"),
+					   MB_ICONERROR | MB_OK);
+		}
+	} catch (...) {
+		if (suppressPrompts) {
+			printerror("Unhandled exception has been thrown!");
+		} else {
+			MessageBox(GetActiveWindow(), _T("Unhandled exception has been thrown!"),
+					   _T("Exception thrown!"), MB_ICONERROR | MB_OK);
+		}
+	}
 
-  SwapLocale();
+	SwapLocale();
 
-  return TRUE;
+	return TRUE;
 }
